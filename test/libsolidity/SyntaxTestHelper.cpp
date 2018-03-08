@@ -21,6 +21,8 @@
 #include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
+using namespace boost::unit_test;
+namespace fs = boost::filesystem;
 
 namespace dev
 {
@@ -92,24 +94,27 @@ std::string SyntaxTester::errorMessage(Error const &_e)
 }
 
 int SyntaxTester::registerTests(
-	boost::unit_test::test_suite& _suite,
-	boost::filesystem::path const& _basepath,
-	boost::filesystem::path const& _path
+	test_suite& _suite,
+	fs::path const& _basepath,
+	fs::path const& _path
 )
 {
 
 	int numTestsAdded = 0;
-	boost::filesystem::path fullpath = _basepath / _path;
-	if (boost::filesystem::is_directory(fullpath))
+	fs::path fullpath = _basepath / _path;
+	if (fs::is_directory(fullpath))
 	{
-		boost::unit_test::test_suite* sub_suite = BOOST_TEST_SUITE(_path.filename().string());
-		for (auto const& entry: boost::filesystem::directory_iterator(fullpath))
+		test_suite* sub_suite = BOOST_TEST_SUITE(_path.filename().string());
+		for (auto const& entry: boost::iterator_range<fs::directory_iterator>(
+			fs::directory_iterator(fullpath),
+			fs::directory_iterator()
+		))
 			numTestsAdded += registerTests(*sub_suite, _basepath, _path / entry.path().filename());
 		_suite.add(sub_suite);
 	}
 	else
 	{
-		_suite.add(boost::unit_test::make_test_case(
+		_suite.add(make_test_case(
 			[fullpath] { SyntaxTester().runTest(SyntaxTestParser().parse(fullpath.string())); },
 			_path.stem().string(),
 			_path.string(),
@@ -128,12 +133,12 @@ void SyntaxTester::registerTests()
 			"Use the --testpath command line option or "
 			"the ETH_TEST_PATH environment variable."
 		);
-	auto testPath = boost::filesystem::path(dev::test::Options::get().testPath);
+	auto testPath = fs::path(dev::test::Options::get().testPath);
 
-	if (boost::filesystem::exists(testPath) && boost::filesystem::is_directory(testPath))
+	if (fs::exists(testPath) && fs::is_directory(testPath))
 	{
 		int numTestsAdded = registerTests(
-			boost::unit_test::framework::master_test_suite(),
+			framework::master_test_suite(),
 			testPath / "libsolidity",
 			"syntaxTests"
 		);
