@@ -91,5 +91,8 @@ if __name__ == '__main__':
             if docs:
               cases = extract_docs_cases(path)
             else:
-              cases = extract_test_cases(path)
+              if f.endswith(".sol"):
+                cases = [open(path, "r").read()]
+              else:
+                cases = extract_test_cases(path)
             write_cases(cases)
