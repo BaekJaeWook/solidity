@@ -15,21 +15,17 @@
 	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <test/libsolidity/SyntaxTestHelper.h>
+#include <test/libsolidity/SyntaxTester.h>
 #include <test/libsolidity/AnalysisFramework.h>
 #include <test/TestHelper.h>
 #include <boost/algorithm/string/replace.hpp>
 
+using namespace dev;
+using namespace solidity;
+using namespace dev::solidity::test;
 using namespace std;
 using namespace boost::unit_test;
 namespace fs = boost::filesystem;
-
-namespace dev
-{
-namespace solidity
-{
-namespace test
-{
 
 void SyntaxTester::runTest(SyntaxTest const& _test)
 {
@@ -39,17 +35,16 @@ void SyntaxTester::runTest(SyntaxTest const& _test)
 
 	bool errorsMatch = true;
 
-	if (errorList.size() != expectations.size ())
+	if (errorList.size() != expectations.size())
 		errorsMatch = false;
 	else
 	{
 		for (size_t i = 0; i < errorList.size(); i++)
 		{
-			auto const& error = errorList[i];
-			auto const& expectation = expectations[i];
-			bool const typeMatches = error->typeName() == expectation.first;
-			bool const messageMatches = errorMessage(*error) == expectation.second;
-			if (!typeMatches || !messageMatches)
+			if (
+				!(errorList[i]->typeName() == expectations[i].type) ||
+				!(errorMessage(*errorList[i]) == expectations[i].message)
+			)
 			{
 				errorsMatch = false;
 				break;
@@ -63,34 +58,24 @@ void SyntaxTester::runTest(SyntaxTest const& _test)
 		if (expectations.empty())
 			msg += "\tSuccess\n";
 		else
-			for (auto const &expectation: expectations)
-			{
-				msg += "\t" + expectation.first + ": " + expectation.second + "\n";
-			}
+			for (auto const& expectation: expectations)
+				msg += "\t" + expectation.type + ": " + expectation.message + "\n";
 		msg += "Obtained result:\n";
 		if (errorList.empty())
 			msg += "\tSuccess\n";
 		else
-			for (auto &error: errorList)
-			{
+			for (auto const& error: errorList)
 				msg += "\t" + error->typeName() + ": " + errorMessage(*error) + "\n";
-			}
 		BOOST_ERROR(msg);
 	}
 }
 
-std::string SyntaxTester::errorMessage(Error const &_e)
+std::string SyntaxTester::errorMessage(Error const& _e)
 {
 	if (_e.comment())
-	{
-		std::string msg = *_e.comment();
-		boost::replace_all(msg, "\n", "\\n");
-		return msg;
-	}
+		return boost::replace_all_copy(*_e.comment(), "\n", "\\n");
 	else
-	{
 		return "NONE";
-	}
 }
 
 int SyntaxTester::registerTests(
@@ -146,8 +131,4 @@ void SyntaxTester::registerTests()
 	}
 	else
 		solAssert(false, "libsolidity/syntaxTests directory not found");
-}
-
-}
-}
 }

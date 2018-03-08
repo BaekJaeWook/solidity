@@ -29,10 +29,16 @@ namespace solidity
 namespace test
 {
 
+struct SyntaxTestExpectation
+{
+	std::string type;
+	std::string message;
+};
+
 struct SyntaxTest
 {
 	std::string source;
-	std::vector<std::pair<std::string, std::string>> expectations;
+	std::vector<SyntaxTestExpectation> expectations;
 };
 
 class SyntaxTestParser
@@ -42,8 +48,8 @@ public:
 
 	SyntaxTest parse(std::string const& _filename);
 private:
-	std::string parseSource(std::istream &_stream);
-	std::vector<std::pair<std::string, std::string>> parseExpectations(std::istream &_stream);
+	std::string parseSource(std::istream& _stream);
+	std::vector<SyntaxTestExpectation> parseExpectations(std::istream& _stream);
 };
 
 }

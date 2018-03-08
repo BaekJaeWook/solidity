@@ -22,47 +22,41 @@
 #include <fstream>
 #include <stdexcept>
 
+using namespace dev;
+using namespace solidity;
+using namespace dev::solidity::test;
 using namespace std;
 
-namespace dev
-{
-namespace solidity
-{
-namespace test
-{
-
 template<typename IteratorType>
-void skipWhitespace(IteratorType &it, IteratorType end)
+void skipWhitespace(IteratorType& it, IteratorType end)
 {
 	while (it != end && isspace(*it))
 		++it;
 }
 
 template<typename IteratorType>
-void skipSlashes(IteratorType &it, IteratorType end)
+void skipSlashes(IteratorType& it, IteratorType end)
 {
 	while (it != end && *it == '/')
 		++it;
 }
 
-std::string SyntaxTestParser::parseSource(std::istream &_stream)
+std::string SyntaxTestParser::parseSource(std::istream& _stream)
 {
 	std::string source;
 	string line;
 	string const delimiter("// ----");
 	while (getline(_stream, line))
-	{
 		if (boost::algorithm::starts_with(line, delimiter))
 			break;
 		else
 			source += line + "\n";
-	}
 	return source;
 }
 
-std::vector<std::pair<std::string, std::string>> SyntaxTestParser::parseExpectations(std::istream &_stream)
+std::vector<SyntaxTestExpectation> SyntaxTestParser::parseExpectations(std::istream& _stream)
 {
-	std::vector<std::pair<std::string, std::string>> expectations;
+	std::vector<SyntaxTestExpectation> expectations;
 	std::string line;
 	while (getline(_stream, line))
 	{
@@ -84,7 +78,7 @@ std::vector<std::pair<std::string, std::string>> SyntaxTestParser::parseExpectat
 		skipWhitespace(it, line.end());
 
 		string errorMessage(it, line.end());
-		expectations.emplace_back(errorType, move(errorMessage));
+		expectations.emplace_back(SyntaxTestExpectation{move(errorType), move(errorMessage)});
 	}
 	return expectations;
 }
@@ -100,8 +94,4 @@ SyntaxTest SyntaxTestParser::parse(string const& _filename)
 	result.source = parseSource(file);
 	result.expectations = parseExpectations(file);
 	return result;
-}
-
-}
-}
 }

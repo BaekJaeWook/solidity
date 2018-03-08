@@ -36,7 +36,7 @@
 #pragma GCC diagnostic pop
 
 #include <test/TestHelper.h>
-#include <test/libsolidity/SyntaxTestHelper.h>
+#include <test/libsolidity/SyntaxTester.h>
 
 using namespace boost::unit_test;
 
