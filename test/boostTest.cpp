@@ -55,7 +55,7 @@ test_suite* init_unit_test_suite( int /*argc*/, char* /*argv*/[] )
 {
 	master_test_suite_t& master = framework::master_test_suite();
 	master.p_name.value = "SolidityTests";
-	dev::solidity::test::registerSyntaxTests();
+	dev::solidity::test::SyntaxTester::registerTests();
 	if (dev::test::Options::get().disableIPC)
 	{
 		for (auto suite: {

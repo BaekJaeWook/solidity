@@ -1,5 +1,3 @@
-// double_variable_declaration_050.sol
-
 pragma experimental "v0.5.0";
 contract test {
     function f() pure public {
@@ -9,5 +7,5 @@ contract test {
 }
 // ----
 // Warning: This declaration shadows an existing declaration.
-// Warning: Unused local variable
-// Warning: Unused local variable
+// Warning: Unused local variable.
+// Warning: Unused local variable.

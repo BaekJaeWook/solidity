@@ -15,10 +15,14 @@
 	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "SyntaxTestParser.h"
+#include <test/libsolidity/SyntaxTestParser.h>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/throw_exception.hpp>
+#include <cctype>
 #include <fstream>
 #include <stdexcept>
-#include <boost/throw_exception.hpp>
+
+using namespace std;
 
 namespace dev
 {
@@ -27,50 +31,76 @@ namespace solidity
 namespace test
 {
 
-SyntaxTest SyntaxTestParser::parse(std::string const& _filename)
+template<typename IteratorType>
+void skipWhitespace(IteratorType &it, IteratorType end)
 {
-	std::ifstream file(_filename);
-	if (!file)
-		BOOST_THROW_EXCEPTION(std::runtime_error("cannot open test contract: \"" + _filename + "\""));
-	file.exceptions(std::ios::badbit);
+	while (it != end && isspace(*it))
+		++it;
+}
 
-	SyntaxTest result;
-	std::string line;
-	std::string const delimiter("// ----");
-	while (std::getline(file, line))
+template<typename IteratorType>
+void skipSlashes(IteratorType &it, IteratorType end)
+{
+	while (it != end && *it == '/')
+		++it;
+}
+
+std::string SyntaxTestParser::parseSource(std::istream &_stream)
+{
+	std::string source;
+	string line;
+	string const delimiter("// ----");
+	while (getline(_stream, line))
 	{
-		if (!line.compare(0, delimiter.size(), delimiter))
+		if (boost::algorithm::starts_with(line, delimiter))
 			break;
 		else
-			result.source += line + "\n";
+			source += line + "\n";
 	}
-	while (std::getline(file, line))
+	return source;
+}
+
+std::vector<std::pair<std::string, std::string>> SyntaxTestParser::parseExpectations(std::istream &_stream)
+{
+	std::vector<std::pair<std::string, std::string>> expectations;
+	std::string line;
+	while (getline(_stream, line))
 	{
 		auto it = line.begin();
 
-		while (it != line.end() && (std::isspace(*it) || *it == '/'))
-			it++;
+		skipSlashes(it, line.end());
+		skipWhitespace(it, line.end());
 
 		if (it == line.end()) continue;
 
-		auto type_begin = it;
+		auto typeBegin = it;
 		while (it != line.end() && *it != ':')
-			it++;
-		std::string errorType(type_begin, it);
+			++it;
+		string errorType(typeBegin, it);
 
 		// skip colon
 		if (it != line.end()) it++;
 
-		while (it != line.end() && std::isspace(*it))
-			it++;
+		skipWhitespace(it, line.end());
 
-		std::string errorMessage(it, line.end());
-		result.expectations.emplace_back(errorType, std::move(errorMessage));
+		string errorMessage(it, line.end());
+		expectations.emplace_back(errorType, move(errorMessage));
 	}
-
-	return result;
+	return expectations;
 }
 
+SyntaxTest SyntaxTestParser::parse(string const& _filename)
+{
+	ifstream file(_filename);
+	if (!file)
+		BOOST_THROW_EXCEPTION(runtime_error("cannot open test contract: \"" + _filename + "\""));
+	file.exceptions(ios::badbit);
+
+	SyntaxTest result;
+	result.source = parseSource(file);
+	result.expectations = parseExpectations(file);
+	return result;
+}
 
 }
 }

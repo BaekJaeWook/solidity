@@ -65,6 +65,10 @@ Options::Options()
 	if (!disableIPC && ipcPath.empty())
 		if (auto path = getenv("ETH_TEST_IPC"))
 			ipcPath = path;
+
+	if (testPath.empty())
+		if (auto path = getenv("ETH_TEST_PATH"))
+			testPath = path;
 }
 
 dev::solidity::EVMVersion Options::evmVersion() const

@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <iosfwd>
 #include <string>
 #include <vector>
 #include <utility>
@@ -40,6 +41,9 @@ public:
 	SyntaxTestParser() = default;
 
 	SyntaxTest parse(std::string const& _filename);
+private:
+	std::string parseSource(std::istream &_stream);
+	std::vector<std::pair<std::string, std::string>> parseExpectations(std::istream &_stream);
 };
 
 }

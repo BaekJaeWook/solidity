@@ -17,6 +17,11 @@
 
 #pragma once
 
+#include <test/libsolidity/AnalysisFramework.h>
+#include <test/libsolidity/SyntaxTestParser.h>
+#include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
+
 namespace dev
 {
 namespace solidity
@@ -24,7 +29,19 @@ namespace solidity
 namespace test
 {
 
-void registerSyntaxTests();
+class SyntaxTester: public AnalysisFramework
+{
+public:
+	static void registerTests();
+private:
+	static int registerTests(
+		boost::unit_test::test_suite& _suite,
+		boost::filesystem::path const& _basepath,
+		boost::filesystem::path const& _path
+	);
+	static std::string errorMessage(Error const& _e);
+	void runTest(SyntaxTest const& _test);
+};
 
 }
 }

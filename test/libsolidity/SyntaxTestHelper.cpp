@@ -15,12 +15,12 @@
 	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
-#include <test/TestHelper.h>
-#include <test/libsolidity/AnalysisFramework.h>
 #include <test/libsolidity/SyntaxTestHelper.h>
-#include <test/libsolidity/SyntaxTestParser.h>
+#include <test/libsolidity/AnalysisFramework.h>
+#include <test/TestHelper.h>
+#include <boost/algorithm/string/replace.hpp>
+
+using namespace std;
 
 namespace dev
 {
@@ -29,78 +29,88 @@ namespace solidity
 namespace test
 {
 
-class SyntaxTester : public AnalysisFramework
+void SyntaxTester::runTest(SyntaxTest const& _test)
 {
-public:
-	void runSyntaxTest(SyntaxTest const& _test)
+	vector<string> unexpectedErrors;
+	auto expectations = _test.expectations;
+	auto errorList = parseAnalyseAndReturnError(_test.source, true, true, true).second;
+
+	bool errorsMatch = true;
+
+	if (errorList.size() != expectations.size ())
+		errorsMatch = false;
+	else
 	{
-		std::vector<std::string> unexpectedErrors;
-		auto expectations = _test.expectations;
-		auto errorList = parseAnalyseAndReturnError(_test.source, true, true, true).second;
-
-		// checks for presence of errors and warnings with multiplicities
-		// could be modified to enforce the precise order as well
-		for (auto const& error: errorList)
+		for (size_t i = 0; i < errorList.size(); i++)
 		{
-			std::string msg = errorMessage(*error);
-			bool found = false;
-			for (auto it = expectations.begin(); it != expectations.end(); ++it)
-				if (msg.find(it->second) != std::string::npos && error->typeName() == it->first)
-				{
-					found = true;
-					expectations.erase(it);
-					break;
-				}
-			if (!found)
-				unexpectedErrors.emplace_back(error->typeName() + ": " + msg);
-		}
-
-		if (!unexpectedErrors.empty())
-		{
-			std::string msg = "Unexpected error(s):\n";
-			for (auto const& error: unexpectedErrors)
-				msg += error + "\n";
-			BOOST_ERROR(msg);
-		}
-
-		if (!expectations.empty())
-		{
-			std::string msg = "Expected error(s) not present:\n";
-			for (auto const& expectation: expectations)
-				msg += expectation.first + ": " + expectation.second + "\n";
-			BOOST_ERROR(msg);
+			auto const& error = errorList[i];
+			auto const& expectation = expectations[i];
+			bool const typeMatches = error->typeName() == expectation.first;
+			bool const messageMatches = errorMessage(*error) == expectation.second;
+			if (!typeMatches || !messageMatches)
+			{
+				errorsMatch = false;
+				break;
+			}
 		}
 	}
-private:
-	static std::string errorMessage(Error const& _e)
+
+	if (!errorsMatch)
 	{
-		return _e.comment() ? *_e.comment() : "NONE";
+		string msg = "Test expectation mismatch.\nExpected result:\n";
+		if (expectations.empty())
+			msg += "\tSuccess\n";
+		else
+			for (auto const &expectation: expectations)
+			{
+				msg += "\t" + expectation.first + ": " + expectation.second + "\n";
+			}
+		msg += "Obtained result:\n";
+		if (errorList.empty())
+			msg += "\tSuccess\n";
+		else
+			for (auto &error: errorList)
+			{
+				msg += "\t" + error->typeName() + ": " + errorMessage(*error) + "\n";
+			}
+		BOOST_ERROR(msg);
 	}
+}
 
-};
+std::string SyntaxTester::errorMessage(Error const &_e)
+{
+	if (_e.comment())
+	{
+		std::string msg = *_e.comment();
+		boost::replace_all(msg, "\n", "\\n");
+		return msg;
+	}
+	else
+	{
+		return "NONE";
+	}
+}
 
-int registerSyntaxTests(
+int SyntaxTester::registerTests(
 	boost::unit_test::test_suite& _suite,
 	boost::filesystem::path const& _basepath,
 	boost::filesystem::path const& _path
 )
 {
-	static SyntaxTestParser syntaxTestParser;
-	static SyntaxTester syntaxTester;
 
 	int numTestsAdded = 0;
 	boost::filesystem::path fullpath = _basepath / _path;
 	if (boost::filesystem::is_directory(fullpath))
 	{
 		boost::unit_test::test_suite* sub_suite = BOOST_TEST_SUITE(_path.filename().string());
-		for (auto &entry : boost::filesystem::directory_iterator(fullpath))
-			numTestsAdded += registerSyntaxTests(*sub_suite, _basepath, _path / entry.path().filename());
+		for (auto const& entry: boost::filesystem::directory_iterator(fullpath))
+			numTestsAdded += registerTests(*sub_suite, _basepath, _path / entry.path().filename());
 		_suite.add(sub_suite);
 	}
 	else
 	{
 		_suite.add(boost::unit_test::make_test_case(
-			[fullpath] { syntaxTester.runSyntaxTest(syntaxTestParser.parse(fullpath.string())); },
+			[fullpath] { SyntaxTester().runTest(SyntaxTestParser().parse(fullpath.string())); },
 			_path.stem().string(),
 			_path.string(),
 			0
@@ -110,40 +120,19 @@ int registerSyntaxTests(
 	return numTestsAdded;
 }
 
-void registerSyntaxTests()
+void SyntaxTester::registerTests()
 {
-	boost::filesystem::path testPath;
-	if (!dev::test::Options::get().testPath.empty())
-		testPath = boost::filesystem::path(dev::test::Options::get().testPath);
-	else
-	{
-		auto search_path =
-		{
-			// assuming call from source tree root
-			boost::filesystem::current_path() / "test" ,
-			// assuming call from build/test
-			boost::filesystem::current_path() / ".." / ".." / "test",
-			// assuming call from build/
-			boost::filesystem::current_path() / ".." / "test",
-			// assuming call from test/
-			boost::filesystem::current_path(),
-			// assuming call from test/libsolidity
-			boost::filesystem::current_path()
-		};
-		for (auto &path: search_path)
-		{
-			auto syntaxTestPath = path / "libsolidity" / "syntaxTests";
-			if (boost::filesystem::exists(syntaxTestPath) && boost::filesystem::is_directory(syntaxTestPath))
-			{
-				testPath = path;
-				break;
-			}
-		}
-	}
+	if(dev::test::Options::get().testPath.empty())
+		throw runtime_error(
+			"No path to the test files was specified. "
+			"Use the --testpath command line option or "
+			"the ETH_TEST_PATH environment variable."
+		);
+	auto testPath = boost::filesystem::path(dev::test::Options::get().testPath);
 
 	if (boost::filesystem::exists(testPath) && boost::filesystem::is_directory(testPath))
 	{
-		int numTestsAdded = registerSyntaxTests(
+		int numTestsAdded = registerTests(
 			boost::unit_test::framework::master_test_suite(),
 			testPath / "libsolidity",
 			"syntaxTests"
