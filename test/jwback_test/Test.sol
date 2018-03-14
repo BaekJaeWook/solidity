@@ -2,7 +2,7 @@ pragma solidity ^0.4.8;
 
 contract HelloWorld{
     
-    string  greeting;
+    string greeting;
     string testCode;
     
     function HelloWorld(string _greeting){
