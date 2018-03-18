@@ -17,7 +17,7 @@ contract OreOreCoin {
         totalSupply = _supply;
     }
 
-    //송금 처리  
+    //송금 처리   
     function transfer(address _to, uint256 _value) {
         if(balanceOf[msg.sender] < _value) throw;
         if(balanceOf[_to] + _value < balanceOf[_to]) throw;
